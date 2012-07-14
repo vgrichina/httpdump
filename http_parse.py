@@ -37,7 +37,7 @@ def parse_http_stream(stream):
 
 def parse_pcap_file(filename):
     # Open the pcap file
-    f = open('market.pcap', 'rb')
+    f = open(filename, 'rb')
     pcap = dpkt.pcap.Reader(f)
 
     # I need to reassmble the TCP flows before decoding the HTTP
