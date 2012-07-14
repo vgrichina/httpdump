@@ -44,37 +44,36 @@ def parse_pcap_file(filename):
 
         tcp = ip.data
 
-        tupl = (ip.src, ip.dst, tcp.sport, tcp.dport)
-        #print tupl, tcp_flags(tcp.flags)
+        addr_tuple = (ip.src, ip.dst, tcp.sport, tcp.dport)
+        #print addr_tuple, tcp_flags(tcp.flags)
 
         # Ensure these are in order! TODO change to a defaultdict
-        if tupl in conn:
-            conn[ tupl ] = conn[ tupl ] + tcp.data
+        if addr_tuple in conn:
+            conn[ addr_tuple ] = conn[ addr_tuple ] + tcp.data
         else:
-            conn[ tupl ] = tcp.data
+            conn[ addr_tuple ] = tcp.data
 
-        # TODO Check if it is a FIN, if so end the connection
+        # Check if it is a FIN, if so end the connection
+        if tcp.flags & dpkt.tcp.TH_FIN:
+            del conn[ addr_tuple ]
+        else:
+            # Try and parse what we have
+            try:
+                stream = conn[ addr_tuple ]
+                if stream[:4] == 'HTTP':
+                    http = dpkt.http.Response(stream)
+                    #print http.status
+                else:
+                    http = dpkt.http.Request(stream)
+                    #print http.method, http.uri
 
-        # Try and parse what we have
-        try:
-            stream = conn[ tupl ]
-            if stream[:4] == 'HTTP':
-                http = dpkt.http.Response(stream)
-                #print http.status
-            else:
-                http = dpkt.http.Request(stream)
-                #print http.method, http.uri
+                yield addr_tuple, http
 
-            yield tupl, http
-
-            # If we reached this part an exception hasn't been thrown
-            stream = stream[len(http):]
-            if len(stream) == 0:
-                del conn[ tupl ]
-            else:
-                conn[ tupl ] = stream
-        except dpkt.UnpackError:
-            pass
+                # If we reached this part an exception hasn't been thrown
+                stream = stream[len(http):]
+                conn[ addr_tuple ] = stream
+            except dpkt.UnpackError:
+                pass
 
     f.close()
 
@@ -87,7 +86,7 @@ if __name__ == '__main__':
         print "%s " % sys.argv[0]
         sys.exit(2)
 
-    for tupl, http in parse_pcap_file(sys.argv[1]):
-        (src, dst, srcPort, dstPort) = tupl
+    for addr_tuple, http in parse_pcap_file(sys.argv[1]):
+        (src, dst, srcPort, dstPort) = addr_tuple
         print "== src: %s:%d dst: %s:%d" % (ip_to_str(src), srcPort, ip_to_str(dst), dstPort)
         print http
