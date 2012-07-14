@@ -3,7 +3,11 @@
 # easier to follow.
 
 import dpkt
+import gzip
+from StringIO import StringIO
 
+
+# Can be used for debugging
 def tcp_flags(flags):
     ret = ''
     if flags & dpkt.tcp.TH_FIN:
@@ -66,6 +70,11 @@ def parse_pcap_file(filename):
                 else:
                     http = dpkt.http.Request(stream)
                     #print http.method, http.uri
+
+                if "content-encoding" in http.headers and http.headers["content-encoding"] == "gzip":
+                    buf = StringIO(http.body)
+                    f = gzip.GzipFile(fileobj=buf)
+                    http.body = f.read()
 
                 yield addr_tuple, http
 
