@@ -25,15 +25,6 @@ def tcp_flags(flags):
 
     return ret
 
-def parse_http_stream(stream):
-    while len(stream) > 0:
-        if stream[:4] == 'HTTP':
-            http = dpkt.http.Response(stream)
-            print http.status
-        else:
-            http = dpkt.http.Request(stream)
-            print http.method, http.uri
-        stream = stream[len(http):]
 
 def parse_pcap_file(filename):
     # Open the pcap file
@@ -74,8 +65,7 @@ def parse_pcap_file(filename):
                 http = dpkt.http.Request(stream)
                 #print http.method, http.uri
 
-            print http
-            print
+            yield tupl, http
 
             # If we reached this part an exception hasn't been thrown
             stream = stream[len(http):]
@@ -88,10 +78,16 @@ def parse_pcap_file(filename):
 
     f.close()
 
+def ip_to_str(ip):
+    return ".".join([str(ord(c)) for c in ip])
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) <= 1:
         print "%s " % sys.argv[0]
         sys.exit(2)
 
-    parse_pcap_file(sys.argv[1])
+    for tupl, http in parse_pcap_file(sys.argv[1]):
+        (src, dst, srcPort, dstPort) = tupl
+        print "== src: %s:%d dst: %s:%d" % (ip_to_str(src), srcPort, ip_to_str(dst), dstPort)
+        print http
