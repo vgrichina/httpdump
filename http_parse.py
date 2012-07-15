@@ -6,7 +6,6 @@ import dpkt
 import gzip
 from StringIO import StringIO
 
-
 # Can be used for debugging
 def tcp_flags(flags):
     ret = ''
@@ -35,6 +34,9 @@ def parse_pcap_file(filename):
     f = open(filename, 'rb')
     pcap = dpkt.pcap.Reader(f)
 
+    parse_pcap(pcap)
+
+def parse_pcap(pcap):
     # I need to reassmble the TCP flows before decoding the HTTP
     conn = dict() # Connections with current buffer
     for ts, buf in pcap:
@@ -89,13 +91,19 @@ def parse_pcap_file(filename):
 def ip_to_str(ip):
     return ".".join([str(ord(c)) for c in ip])
 
+def display(pcap):
+    for addr_tuple, http in pcap:
+        (src, dst, srcPort, dstPort) = addr_tuple
+        print "== src: %s:%d dst: %s:%d" % (ip_to_str(src), srcPort, ip_to_str(dst), dstPort)
+        print http
+
+def display_pcap_file(fileName):
+    display(parse_pcap_file(fileName))
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) <= 1:
         print "%s " % sys.argv[0]
         sys.exit(2)
 
-    for addr_tuple, http in parse_pcap_file(sys.argv[1]):
-        (src, dst, srcPort, dstPort) = addr_tuple
-        print "== src: %s:%d dst: %s:%d" % (ip_to_str(src), srcPort, ip_to_str(dst), dstPort)
-        print http
+    display_pcap_file(sys.argv[1])
